@@ -19,3 +19,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Claude Code internal files
+CLAUDE.md
+claude_code_prompt.md
