@@ -1,10 +1,19 @@
 """Gradio web UI for Bill of Lading OCR extraction."""
 
+import time
 from pathlib import Path
 
 import gradio as gr
 
 from pipeline import check_ollama, process_pdf
+
+
+def _fmt_duration(seconds: float) -> str:
+    """Format seconds into a human-readable string (e.g. '1m 23s' or '45s')."""
+    seconds = int(seconds)
+    if seconds >= 60:
+        return f"{seconds // 60}m {seconds % 60}s"
+    return f"{seconds}s"
 
 
 def get_ollama_status() -> str:
@@ -22,12 +31,15 @@ def extract_single(pdf_path: str | None, progress=gr.Progress()) -> tuple:
     def callback(ratio: float, message: str) -> None:
         progress(ratio, desc=message)
 
+    t_start = time.perf_counter()
     try:
         markdown, output_path = process_pdf(pdf_path, progress_callback=callback)
     except Exception as e:
         return f"**ERROR:** {e}", gr.update(visible=False)
+    elapsed = _fmt_duration(time.perf_counter() - t_start)
 
-    return markdown, gr.update(value=output_path, visible=True)
+    header = f"_ใช้เวลา: **{elapsed}**_ · บันทึกที่: `{output_path}`\n\n---\n\n"
+    return header + markdown, gr.update(value=output_path, visible=True)
 
 
 def extract_batch(
@@ -42,19 +54,27 @@ def extract_batch(
     out_dir = output_dir.strip() or None
     total = len(pdf_paths)
     results: list[str] = []
+    t_batch_start = time.perf_counter()
 
     for i, pdf_path in enumerate(pdf_paths):
         name = Path(pdf_path).name
         progress(i / total, desc=f"[{i + 1}/{total}] {name}")
+        t_file_start = time.perf_counter()
         try:
             _, saved_path = process_pdf(pdf_path, output_dir=out_dir)
-            results.append(f"✅ **{name}** → `{saved_path}`")
+            elapsed = _fmt_duration(time.perf_counter() - t_file_start)
+            results.append(f"✅ **{name}** · {elapsed} → `{saved_path}`")
         except Exception as e:
-            results.append(f"❌ **{name}**: {e}")
+            elapsed = _fmt_duration(time.perf_counter() - t_file_start)
+            results.append(f"❌ **{name}** · {elapsed}: {e}")
 
     progress(1.0, desc="เสร็จสิ้น")
+    total_elapsed = _fmt_duration(time.perf_counter() - t_batch_start)
     ok_count = sum(1 for r in results if r.startswith("✅"))
-    summary = f"### ผลลัพธ์: {ok_count}/{total} สำเร็จ\n\n" + "\n\n".join(results)
+    summary = (
+        f"### ผลลัพธ์: {ok_count}/{total} สำเร็จ · รวม {total_elapsed}\n\n"
+        + "\n\n".join(results)
+    )
     return summary
 
 
