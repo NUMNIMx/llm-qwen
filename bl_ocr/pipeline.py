@@ -11,7 +11,7 @@ from PIL import Image
 
 OLLAMA_URL = "http://localhost:11434"
 MODEL_NAME = "qwen2.5vl:7b"
-IMAGES_SCALE = 1.0
+IMAGES_SCALE = 2.8
 OLLAMA_TIMEOUT = 600
 
 EXTRACT_PROMPT = """\
@@ -76,7 +76,7 @@ def extract_page(image_b64: str, page_num: int, total_pages: int) -> str:
         ],
         "options": {
             "temperature": 0.05,
-            "num_ctx": 4096,
+            "num_ctx": 8192,
         },
         "stream": False,
     }
