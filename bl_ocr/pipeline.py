@@ -114,8 +114,15 @@ def check_ollama() -> tuple[bool, str]:
 def process_pdf(
     pdf_path: str,
     progress_callback: Optional[Callable[[float, str], None]] = None,
+    output_dir: Optional[str] = None,
 ) -> tuple[str, str]:
-    """Run the full OCR pipeline on a PDF and return (markdown, output_path)."""
+    """Run the full OCR pipeline on a PDF and return (markdown, output_path).
+
+    Args:
+        pdf_path: Path to the input PDF file.
+        progress_callback: Optional callback(ratio, message) for progress updates.
+        output_dir: Directory to save the output Markdown file. Defaults to same directory as input.
+    """
 
     def _progress(ratio: float, message: str) -> None:
         if progress_callback:
@@ -142,7 +149,9 @@ def process_pdf(
     full_markdown = "\n\n---\n\n".join(sections)
 
     input_path = Path(pdf_path)
-    output_path = input_path.parent / f"{input_path.stem}_extracted.md"
+    out_dir = Path(output_dir) if output_dir else input_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output_path = out_dir / f"{input_path.stem}_extracted.md"
     output_path.write_text(full_markdown, encoding="utf-8")
 
     _progress(1.0, f"เสร็จสิ้น — บันทึกที่ {output_path}")
